@@ -16,27 +16,7 @@ namespace Markdown.Demo
 
         private void LoadStyles()
         {
-            // Load a custom styles file if it exists
-            string currentAssembly = System.Reflection.Assembly.GetExecutingAssembly().Location;
-            string stylesBaseFile = Path.Combine(Path.GetDirectoryName(currentAssembly), Path.GetFileNameWithoutExtension(currentAssembly) + ".Styles");
-            string stylesFile = stylesBaseFile + ".xaml";
-            if (File.Exists(stylesFile) == false)
-            {
-                stylesFile = stylesBaseFile + ".Default.xaml";
-            }
-
-            try
-            {
-                using (Stream stream = new FileStream(stylesFile, FileMode.Open, FileAccess.Read))
-                {
-                    ResourceDictionary resources = (ResourceDictionary)XamlReader.Load(stream);
-                    Resources.MergedDictionaries.Add(resources);
-                }
-            }
-            catch (Exception ex)
-            {
-              MessageBox.Show($"Unable to load styles file '{stylesFile}'.\n{ex.Message}");
-            }
+            Resources.MergedDictionaries.Add((ResourceDictionary)Application.Current.Resources["styles1"]);
         }
     }
 }
