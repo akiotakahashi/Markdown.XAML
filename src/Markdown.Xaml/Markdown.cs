@@ -1448,23 +1448,30 @@ namespace Markdown.Xaml
         #region Table
 
         private static readonly Regex _table = new Regex(@"
-            (                               # $1 = whole table
+            (?<tbl>                         # $1 = whole table
                 [ \r\n]*
-                (                           # $2 = table header
-                    \|([^|\r\n]*\|)+        # $3
+                (?<hdr>                     # $2 = table header
+                    ([^\r\n\|]*\|[^\r\n]+)  # $3
                 )
                 [ ]*\r?\n[ ]*
-                (                           # $4 = column style
-                    =?\|(:?-+:?\|)+         # $5
+                (?<col>                     # $4 = column style
+                    =?\|?([ ]*:?-+:?[ ]*(\||$))+  # $5
                 )
-                (                           # $6 = table row
+                (?<row>                     # $6 = table row
                     (                       # $7
                         [ ]*\r?\n[ ]*
-                        \|([^|\r\n]*\|)+    # $8
+                        ([^\r\n\|]*\|[^\r\n]+)  # $8
                     )+
                 )
             )",
-            RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
+            RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled | RegexOptions.ExplicitCapture);
+
+        private static readonly Regex _cell = new Regex(@"
+            \A(
+                (?<text>(`[^`]*`|[^`\|\r?\n])*)
+                (\|\r?\n?|\r?\n|\z)
+            )+?\z
+            ", RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled | RegexOptions.ExplicitCapture);
 
         public IEnumerable<Block> DoTable(string text, Func<string, IEnumerable<Block>> defaultHandler)
         {
@@ -1483,18 +1490,29 @@ namespace Markdown.Xaml
                 throw new ArgumentNullException(nameof(match));
             }
 
-            var wholeTable = match.Groups[1].Value;
-            var header = match.Groups[2].Value.Trim();
-            var style = match.Groups[4].Value.Trim();
-            var row = match.Groups[6].Value.Trim();
-            var rowAlt = style.Substring(0, 1) == "=" ? true : false;
+            var wholeTable = match.Groups["tbl"].Value;
+            var header = match.Groups["hdr"].Value.Trim();
+            var style = match.Groups["col"].Value.Trim();
+            var row = match.Groups["row"].Value.Trim();
 
-            var styles = style.Substring(1 + Convert.ToInt32(rowAlt), style.Length - (2 + Convert.ToInt32(rowAlt))).Split('|');
-            var headers = header.Substring(1, header.Length - 2).Split('|');
+            var rowAlt = (style[0] == '=') ? true : false;
+            if (rowAlt)
+            {
+                style = style.Substring(1);
+            }
+
+            var leadingBar = header.StartsWith('|') ? '|' : '\0';
+            var tailingBar = header.EndsWith('|') ? '|' : '\0';
+            header = header.TrimStart(leadingBar).TrimEnd(tailingBar).Trim();
+            style = style.TrimStart(leadingBar).TrimEnd(tailingBar).Trim();
+            row = row.TrimStart(leadingBar).TrimEnd(tailingBar).Trim();
+
+            var styles = style.Split('|', StringSplitOptions.RemoveEmptyEntries);
+            var headers = header.Split('|');
             var rowList = row.Split('\n').Select(ritm =>
             {
-                var trimRitm = ritm.Trim();
-                return trimRitm.Substring(1, trimRitm.Length - 2).Split('|');
+                var trimRitm = ritm.TrimStart(leadingBar).TrimEnd(tailingBar).Trim();
+                return _cell.Matches(trimRitm).SelectMany(m => m.Groups["text"].Captures).Select(c => c.Value).ToArray();
             }).ToList();
 
             int maxColCount =
@@ -1507,6 +1525,7 @@ namespace Markdown.Xaml
             var aligns = new List<TextAlignment?>();
             foreach (var colStyleTxt in styles)
             {
+                if (colStyleTxt.Length == 0) { continue; }
                 var firstChar = colStyleTxt.First();
                 var lastChar = colStyleTxt.Last();
                 // center
@@ -1599,7 +1618,7 @@ namespace Markdown.Xaml
 
             foreach (var idx in Enumerable.Range(0, txts.Length))
             {
-                var txt = txts[idx];
+                var txt = txts[idx].Trim();
                 var align = aligns[idx];
 
                 var paragraph = Create<Paragraph, Inline>(RunSpanGamut(txt));
@@ -1751,7 +1770,6 @@ namespace Markdown.Xaml
             string span = match.Groups[2].Value;
             span = Regex.Replace(span, @"^[ ]*", ""); // leading whitespace
             span = Regex.Replace(span, @"[ ]*$", ""); // trailing whitespace
-            span = " " + span + " ";
 
             var result = new Run(span);
 
