@@ -1,32 +1,37 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
+using System.Windows.Markup;
+using System.Xml;
 
-namespace Markdown.Xaml
+namespace Markdown.Demo
 {
-    public class TextToFlowDocumentConverter : DependencyObject, IValueConverter
+    public class MarkdownXamlConverter : DependencyObject, IValueConverter
     {
-        public Markdown Markdown
-        {
-            get { return (Markdown)GetValue(MarkdownProperty); }
-            set { SetValue(MarkdownProperty, value); }
-        }
-
         // Using a DependencyProperty as the backing store for Markdown.  This enables animation, styling, binding, etc...
         public static readonly DependencyProperty MarkdownProperty =
-            DependencyProperty.Register("Markdown", typeof(Markdown), typeof(TextToFlowDocumentConverter), new PropertyMetadata(null, MarkdownUpdate));
+            DependencyProperty.Register("Markdown",
+                typeof(Markdown.Xaml.Markdown),
+                typeof(MarkdownXamlConverter),
+                new PropertyMetadata(null));
 
-        private static void MarkdownUpdate(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        private Lazy<Markdown.Xaml.Markdown> mMarkdown;
+
+        public MarkdownXamlConverter()
         {
-            if (e.NewValue != null)
-            {
-                var owner = (TextToFlowDocumentConverter)d;
-                if (owner.MarkdownStyle != null)
-                {
-                    ((Markdown)e.NewValue).DocumentStyle = owner.MarkdownStyle;
-                }
-            }
+            mMarkdown = new Lazy<Markdown.Xaml.Markdown>(MakeMarkdown);
+        }
+
+        public Markdown.Xaml.Markdown Markdown
+        {
+            get { return (Markdown.Xaml.Markdown)GetValue(MarkdownProperty); }
+            set { SetValue(MarkdownProperty, value); }
         }
 
         /// <summary>
@@ -41,7 +46,7 @@ namespace Markdown.Xaml
         /// <param name="culture">The culture to use in the converter.</param>
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            if (value is null)
+            if (value == null)
             {
                 return null;
             }
@@ -50,7 +55,7 @@ namespace Markdown.Xaml
 
             var engine = Markdown ?? mMarkdown.Value;
 
-            return engine.Transform(text);
+            return AsXaml(engine.Transform(text));
         }
 
         /// <summary>
@@ -68,19 +73,24 @@ namespace Markdown.Xaml
             throw new NotImplementedException();
         }
 
-        private readonly Lazy<Markdown> mMarkdown
-            = new Lazy<Markdown>(() => new Markdown());
+        private Markdown.Xaml.Markdown MakeMarkdown()
+        {
+            var markdown = new Markdown.Xaml.Markdown();
+            return markdown;
+        }
 
-        private Style markdownStyle;
-
-        public Style MarkdownStyle {
-            get { return markdownStyle; }
-            set {
-                markdownStyle = value;
-                if (value != null && Markdown != null)
+        private string AsXaml(object instance)
+        {
+            using (var writer = new StringWriter())
+            {
+                var settings = new XmlWriterSettings { Indent = true };
+                using (var xmlWriter = XmlWriter.Create(writer, settings))
                 {
-                    Markdown.DocumentStyle = value;
+                    XamlWriter.Save(instance, xmlWriter);
                 }
+
+                writer.WriteLine();
+                return writer.ToString();
             }
         }
     }
