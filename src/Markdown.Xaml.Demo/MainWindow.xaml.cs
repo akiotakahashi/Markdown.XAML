@@ -1,9 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -28,11 +28,14 @@ namespace Markdown.Demo
             InitializeComponent();
 
             CommandBindings.Add(new CommandBinding(NavigationCommands.GoToPage, (sender, e) => Process.Start((string)e.Parameter)));
+
+            this.DataContext = new DemoViewModel();
         }
 
         private void Window_Loaded_1(object sender, RoutedEventArgs e)
         {
             var sampleMarkdown = LoadSample();
+            demoSource.Text = sampleMarkdown;
             editSource.Text = sampleMarkdown;
             editSource2.Text = sampleMarkdown;
         }
@@ -58,5 +61,12 @@ namespace Markdown.Demo
             }
         }
 
+        /// <summary>
+        /// Manual preview markdown.
+        /// </summary>
+        private void Preview_Click(object sender, RoutedEventArgs e)
+        {
+            ((DemoViewModel)this.DataContext).TextPreview = ((DemoViewModel)this.DataContext).TextMarkdown;
+        }
     }
 }
