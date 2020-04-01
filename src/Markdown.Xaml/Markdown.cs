@@ -1607,7 +1607,7 @@ namespace Markdown.Xaml
 
             foreach (var idx in Enumerable.Range(0, txts.Length))
             {
-                var txt = txts[idx];
+                var txt = txts[idx].Trim();
                 var align = aligns[idx];
 
                 var paragraph = Create<Paragraph, Inline>(RunSpanGamut(txt));
@@ -1759,7 +1759,6 @@ namespace Markdown.Xaml
             string span = match.Groups[2].Value;
             span = Regex.Replace(span, @"^[ ]*", ""); // leading whitespace
             span = Regex.Replace(span, @"[ ]*$", ""); // trailing whitespace
-            span = " " + span + " ";
 
             var result = new Run(span);
 
