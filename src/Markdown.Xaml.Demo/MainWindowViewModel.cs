@@ -16,14 +16,7 @@ namespace Markdown.Demo
     {
         public MainWindowViewModel()
         {
-            string currentAssembly = System.Reflection.Assembly.GetExecutingAssembly().Location;
-            string styleFilePath = Path.Combine(Path.GetDirectoryName(currentAssembly), Path.GetFileNameWithoutExtension(currentAssembly) + ".Styles.Default2.xaml");
-
-            ResourceDictionary resources;
-            using (Stream stream = new FileStream(styleFilePath, FileMode.Open, FileAccess.Read))
-            {
-                resources = (ResourceDictionary)XamlReader.Load(stream);
-            }
+            var resources = (ResourceDictionary)Application.Current.Resources["styles2"];
 
             Styles = new List<StyleInfo>();
 

@@ -8,7 +8,7 @@ using System.Windows.Data;
 
 namespace Markdown.Demo
 {
-    class BoolToEnabledConverter : IValueConverter
+    public class BoolToEnabledConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
