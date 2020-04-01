@@ -1466,6 +1466,13 @@ namespace Markdown.Xaml
             )",
             RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled | RegexOptions.ExplicitCapture);
 
+        private static readonly Regex _cell = new Regex(@"
+            \A(
+                (?<text>(`[^`]*`|[^`\|\r?\n])*)
+                (\|\r?\n?|\r?\n|\z)
+            )+?\z
+            ", RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled | RegexOptions.ExplicitCapture);
+
         public IEnumerable<Block> DoTable(string text, Func<string, IEnumerable<Block>> defaultHandler)
         {
             if (text is null)
@@ -1487,21 +1494,25 @@ namespace Markdown.Xaml
             var header = match.Groups["hdr"].Value.Trim();
             var style = match.Groups["col"].Value.Trim();
             var row = match.Groups["row"].Value.Trim();
-            var rowAlt = style.Substring(0, 1) == "=" ? true : false;
-            style = style.Substring(1);
+
+            var rowAlt = (style[0] == '=') ? true : false;
+            if (rowAlt)
+            {
+                style = style.Substring(1);
+            }
 
             var leadingBar = header.StartsWith('|') ? '|' : '\0';
             var tailingBar = header.EndsWith('|') ? '|' : '\0';
-            header = header.TrimStart(leadingBar).TrimEnd(tailingBar);
-            style = style.TrimStart(leadingBar).TrimEnd(tailingBar);
+            header = header.TrimStart(leadingBar).TrimEnd(tailingBar).Trim();
+            style = style.TrimStart(leadingBar).TrimEnd(tailingBar).Trim();
+            row = row.TrimStart(leadingBar).TrimEnd(tailingBar).Trim();
 
-            var styles = style.Split('|');
+            var styles = style.Split('|', StringSplitOptions.RemoveEmptyEntries);
             var headers = header.Split('|');
             var rowList = row.Split('\n').Select(ritm =>
             {
-                var trimRitm = ritm.Trim();
-                trimRitm = trimRitm.TrimStart(leadingBar).TrimEnd(tailingBar);
-                return trimRitm.Split('|');
+                var trimRitm = ritm.TrimStart(leadingBar).TrimEnd(tailingBar).Trim();
+                return _cell.Matches(trimRitm).SelectMany(m => m.Groups["text"].Captures).Select(c => c.Value).ToArray();
             }).ToList();
 
             int maxColCount =
