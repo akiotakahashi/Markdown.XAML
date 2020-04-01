@@ -577,6 +577,8 @@ namespace Markdown.Xaml
                 {
                     imgSource = CreateBitmapImage(url);
                 }
+
+                imgSource.Freeze();
             }
             catch
             {
