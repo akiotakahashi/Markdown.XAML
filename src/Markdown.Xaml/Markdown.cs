@@ -1455,7 +1455,7 @@ namespace Markdown.Xaml
                 )
                 [ ]*\r?\n[ ]*
                 (                           # $4 = column style
-                    =?\|(:?-+:?\|)+         # $5
+                    =?\|([ ]*:?-+:?[ ]*\|)+ # $5
                 )
                 (                           # $6 = table row
                     (                       # $7
