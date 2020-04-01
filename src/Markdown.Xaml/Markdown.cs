@@ -1448,23 +1448,23 @@ namespace Markdown.Xaml
         #region Table
 
         private static readonly Regex _table = new Regex(@"
-            (                               # $1 = whole table
+            (?<tbl>                         # $1 = whole table
                 [ \r\n]*
-                (                           # $2 = table header
-                    \|([^|\r\n]*\|)+        # $3
+                (?<hdr>                     # $2 = table header
+                    ([^\r\n\|]*\|[^\r\n]+)  # $3
                 )
                 [ ]*\r?\n[ ]*
-                (                           # $4 = column style
-                    =?\|([ ]*:?-+:?[ ]*\|)+ # $5
+                (?<col>                     # $4 = column style
+                    =?\|?([ ]*:?-+:?[ ]*(\||$))+  # $5
                 )
-                (                           # $6 = table row
+                (?<row>                     # $6 = table row
                     (                       # $7
                         [ ]*\r?\n[ ]*
-                        \|([^|\r\n]*\|)+    # $8
+                        ([^\r\n\|]*\|[^\r\n]+)  # $8
                     )+
                 )
             )",
-            RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
+            RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled | RegexOptions.ExplicitCapture);
 
         public IEnumerable<Block> DoTable(string text, Func<string, IEnumerable<Block>> defaultHandler)
         {
@@ -1483,18 +1483,25 @@ namespace Markdown.Xaml
                 throw new ArgumentNullException(nameof(match));
             }
 
-            var wholeTable = match.Groups[1].Value;
-            var header = match.Groups[2].Value.Trim();
-            var style = match.Groups[4].Value.Trim();
-            var row = match.Groups[6].Value.Trim();
+            var wholeTable = match.Groups["tbl"].Value;
+            var header = match.Groups["hdr"].Value.Trim();
+            var style = match.Groups["col"].Value.Trim();
+            var row = match.Groups["row"].Value.Trim();
             var rowAlt = style.Substring(0, 1) == "=" ? true : false;
+            style = style.Substring(1);
 
-            var styles = style.Substring(1 + Convert.ToInt32(rowAlt), style.Length - (2 + Convert.ToInt32(rowAlt))).Split('|');
-            var headers = header.Substring(1, header.Length - 2).Split('|');
+            var leadingBar = header.StartsWith('|') ? '|' : '\0';
+            var tailingBar = header.EndsWith('|') ? '|' : '\0';
+            header = header.TrimStart(leadingBar).TrimEnd(tailingBar);
+            style = style.TrimStart(leadingBar).TrimEnd(tailingBar);
+
+            var styles = style.Split('|');
+            var headers = header.Split('|');
             var rowList = row.Split('\n').Select(ritm =>
             {
                 var trimRitm = ritm.Trim();
-                return trimRitm.Substring(1, trimRitm.Length - 2).Split('|');
+                trimRitm = trimRitm.TrimStart(leadingBar).TrimEnd(tailingBar);
+                return trimRitm.Split('|');
             }).ToList();
 
             int maxColCount =
@@ -1507,6 +1514,7 @@ namespace Markdown.Xaml
             var aligns = new List<TextAlignment?>();
             foreach (var colStyleTxt in styles)
             {
+                if (colStyleTxt.Length == 0) { continue; }
                 var firstChar = colStyleTxt.First();
                 var lastChar = colStyleTxt.Last();
                 // center
